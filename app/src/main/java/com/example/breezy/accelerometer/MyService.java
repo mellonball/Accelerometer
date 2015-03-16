@@ -9,33 +9,40 @@ import android.hardware.SensorManager;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
+
 import java.util.ArrayList;
 
 
 public class MyService extends Service implements SensorEventListener{
 
-    private boolean startCollecting = false;
-    private SensorManager mysensormanager;
-    private Float accelerometerVal = 0.0f, gyroscopeVal = 0.0f;
-    public boolean finalAccelerometerVal, finalGyroscopeVal;
-    private Sensor accelerometer;
-    private Sensor gyroscope;
+    private boolean mStartCollectingData = false;
+    private SensorManager mSensorManager;
+    private Float mAccelerometerVal = 0.0f, mGyroscopeVal = 0.0f;
+    private boolean mAccelerometerDataIsCollected, mGyroscopeDataIsCollected;
+    private Sensor mAccelerometer;
+    private Sensor mGyroscope;
     private IBinder myTempBinder = new MyBinder();
-    public Bundle a = new Bundle();
-    private int numVals = 100;
-    ArrayList<Float> accelValues = new ArrayList<>();
-    ArrayList<Float> gyroscopeValues = new ArrayList<>();
+    private Bundle mReturnData = new Bundle();
+    private int mNumValuesNeeded = 100;
+    ArrayList<Float> mAccelerometerValues = new ArrayList<>();
+    ArrayList<Float> mGyroscopeValues = new ArrayList<>();
+
+    public static final String ACCELEROMETER_DATA = "Accelerometer Data";
+    public static final String GYROSCOPE_DATA = "Gyroscope Data";
+
+    private final String TAG = MyService.class.getCanonicalName();
 
     @Override
     public void onCreate() {
         super.onCreate();
 
-        mysensormanager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        accelerometer = mysensormanager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        gyroscope = mysensormanager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        mGyroscope = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 
-        mysensormanager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-        mysensormanager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_NORMAL);
+        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
     public MyService() {
@@ -56,52 +63,43 @@ public class MyService extends Service implements SensorEventListener{
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (startCollecting)
+        if (mStartCollectingData)
         {
-            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER && accelValues.size() < numVals) {
-                accelValues.add(event.values[1]);
-                System.out.println("We are in accel " + event.values[1] + " size: " + accelValues.size());
+            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER && mAccelerometerValues.size() < mNumValuesNeeded) {
+                mAccelerometerValues.add(event.values[1]);
+                Log.d(TAG, "We are in accel " + event.values[1] + " size: " + mAccelerometerValues.size());
             }
 
-            else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE && gyroscopeValues.size() < numVals){
-                gyroscopeValues.add(event.values[0]);
-                System.out.println("We are in gyroscope " + event.values[1] + " size: " + gyroscopeValues.size());
+            else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE && mGyroscopeValues.size() < mNumValuesNeeded){
+                mGyroscopeValues.add(event.values[0]);
+                Log.d(TAG, "We are in gyroscope " + event.values[1] + " size: " + mGyroscopeValues.size());
             }
 
-            if (accelValues.size() == numVals && finalAccelerometerVal == false){
-                finalAccelerometerVal = true;
-                if (finalGyroscopeVal == true) {
-                    startCollecting = false;
-                }
+            if (mAccelerometerValues.size() == mNumValuesNeeded && mAccelerometerDataIsCollected == false){
+                mAccelerometerDataIsCollected = true;
 
-                //mysensormanager.unregisterListener(this);
-                for (int i=0; i<numVals; i++){
-                    accelerometerVal += accelValues.get(i);
+                for (int i=0; i< mNumValuesNeeded; i++){
+                    mAccelerometerVal += mAccelerometerValues.get(i);
                     //summing
-                    // System.out.println(accelValues.get(i));
                 }
-                accelerometerVal /= 10.0f;
-                System.out.println("FINAL ACCELVAL = " + accelerometerVal);
+                mAccelerometerVal /= 10.0f;
+                Log.d(TAG, "FINAL ACCELVAL = " + mAccelerometerVal);
 
                 // for testing print to screen when done
-                // MainActivity.rsa.setText(accelerometerVal.toString());
+                // MainActivity.rsa.setText(mAccelerometerVal.toString());
             }
 
-            if (gyroscopeValues.size() == numVals && finalGyroscopeVal == false){
-                finalGyroscopeVal = true;
-                if (finalAccelerometerVal == true){
-                    startCollecting = false;
+            if (mGyroscopeValues.size() == mNumValuesNeeded && mGyroscopeDataIsCollected == false){
+                mGyroscopeDataIsCollected = true;
+
+                for (int i=0; i< mNumValuesNeeded; i++){
+                    mGyroscopeVal += mGyroscopeValues.get(i);
                 }
-                //mysensormanager.unregisterListener(this);
-                for (int i=0; i<numVals; i++){
-                    gyroscopeVal += gyroscopeValues.get(i);
-                    //System.out.println(gyroscopeValues.get(i));
-                }
-                gyroscopeVal /= 10.0f;
-                System.out.println("FINAL GYROSC VAL = " + gyroscopeVal);
+                mGyroscopeVal /= 10.0f;
+               Log.d(TAG, "FINAL GYROSC VAL = " + mGyroscopeVal);
 
                 // for testing, print to screen when done.
-                // MainActivity.rsg.setText(gyroscopeVal.toString());
+                // MainActivity.rsg.setText(mGyroscopeVal.toString());
 
             }
         }
@@ -113,18 +111,23 @@ public class MyService extends Service implements SensorEventListener{
     }
 
 
-    //function to start collecting accelerometer and gyroscope values
+    //function to start collecting accelerometer and mGyroscope values
     public void collectSensorData() {
-        startCollecting = true;
+        mStartCollectingData = true;
 
     }
 
     public Bundle getSensorData() {
-        if (finalGyroscopeVal && finalAccelerometerVal) {
-            a.putFloat("accelerometerVal", accelerometerVal);
-            a.putFloat("gyroscopeVal", gyroscopeVal);
+        if ( isSensorDataReady() ) {
+            mStartCollectingData = false;
+            mReturnData.putFloat(ACCELEROMETER_DATA, mAccelerometerVal);
+            mReturnData.putFloat(GYROSCOPE_DATA, mGyroscopeVal);
         }
-        return a;
+        return mReturnData;
+    }
+
+    public boolean isSensorDataReady() {
+        return ( mGyroscopeDataIsCollected && mAccelerometerDataIsCollected);
     }
 
 

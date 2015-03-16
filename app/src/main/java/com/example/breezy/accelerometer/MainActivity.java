@@ -19,35 +19,35 @@ import android.widget.Toast;
 
 public class MainActivity extends ActionBarActivity implements View.OnClickListener  {
 
-    private Button create, invoke, data;
-    public static TextView rsa, rsg;
-    private MyService serviceobj;
+    private Button mCreateButton, mInvokeButton, mDataButton;
+    private TextView mRsaTextView, mRsgTextView;
+    private MyService mServiceobj;
     private boolean mBound;
     private int mCurrentScreenOrientation;
 
-    private static final String TAG = MainActivity.class.getCanonicalName();
-    private static final String RSA_KEY = "RSA";
-    private static final String RSG_KEY = "RSG";
+    private final String TAG = MainActivity.class.getCanonicalName();
+    private final String RSA_KEY = "RSA";
+    private final String RSG_KEY = "RSG";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        create = (Button) findViewById(R.id.buttonCreateBS);
-        invoke = (Button) findViewById(R.id.buttonInvoke);
-        data = (Button) findViewById(R.id.buttonData);
+        mCreateButton = (Button) findViewById(R.id.buttonCreateBS);
+        mInvokeButton = (Button) findViewById(R.id.buttonInvoke);
+        mDataButton = (Button) findViewById(R.id.buttonData);
 
-        create.setOnClickListener(this);
-        invoke.setOnClickListener(this);
-        data.setOnClickListener(this);
+        mCreateButton.setOnClickListener(this);
+        mInvokeButton.setOnClickListener(this);
+        mDataButton.setOnClickListener(this);
 
-        rsa = (TextView) findViewById(R.id.rsa);
-        rsg = (TextView) findViewById(R.id.rsg);
+        mRsaTextView = (TextView) findViewById(R.id.rsa);
+        mRsgTextView = (TextView) findViewById(R.id.rsg);
 
         if (savedInstanceState != null) {
-            rsa.setText(savedInstanceState.getString(RSA_KEY));
-            rsg.setText(savedInstanceState.getString(RSG_KEY));
+            mRsaTextView.setText(savedInstanceState.getString(RSA_KEY));
+            mRsgTextView.setText(savedInstanceState.getString(RSG_KEY));
         }
 
         mBound = false;
@@ -57,10 +57,10 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         Log.d(TAG, "onSaveInstanceState");
-        Log.d(TAG, "RSA Text: " + rsa.getText().toString());
-        Log.d(TAG, "RSG Text: " + rsg.getText().toString());
-        outState.putString(RSA_KEY, rsa.getText().toString());
-        outState.putString(RSG_KEY, rsg.getText().toString());
+        Log.d(TAG, "RSA Text: " + mRsaTextView.getText().toString());
+        Log.d(TAG, "RSG Text: " + mRsgTextView.getText().toString());
+        outState.putString(RSA_KEY, mRsaTextView.getText().toString());
+        outState.putString(RSG_KEY, mRsgTextView.getText().toString());
     }
 
     @Override
@@ -116,7 +116,7 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
+        // as you specify mReturnData parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
@@ -134,12 +134,12 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
                 Intent boundIntent = new Intent(this, MyService.class);
                 bindService(boundIntent, mConnection, Context.BIND_AUTO_CREATE);
                 mBound = true;
-                System.out.println("You clicked create bs");
+                Log.d(TAG, "You clicked create bs");
                 break;
 
             case R.id.buttonInvoke:
                 if (mBound) {
-                    serviceobj.collectSensorData();
+                    mServiceobj.collectSensorData();
                     mCurrentScreenOrientation = getRequestedOrientation();
                     setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR);
                     Toast.makeText(MainActivity.this, "collecting", Toast.LENGTH_SHORT).show();
@@ -147,23 +147,23 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
                 break;
             case R.id.buttonData:
                 if (mBound) {
-                    Bundle a;
-                    if( serviceobj != null) {
-                        a = serviceobj.getSensorData();
+                    Bundle returnData;
+                    if( mServiceobj != null) {
+                        returnData = mServiceobj.getSensorData();
                     } else {
                         Toast.makeText(MainActivity.this, "serviceobj is null", Toast.LENGTH_LONG).show();
                         break;
                     }
-                    if (serviceobj.finalAccelerometerVal && serviceobj.finalGyroscopeVal) {
-                        Float rsaVal = a.getFloat("accelerometerVal");
-                        Float rsgVal = a.getFloat("gyroscopeVal");
-                        rsa.setText(rsaVal.toString());
-                        rsg.setText(rsgVal.toString());
+                    if ( mServiceobj.isSensorDataReady() ) {
+                        Float rsaVal = returnData.getFloat(MyService.ACCELEROMETER_DATA);
+                        Float rsgVal = returnData.getFloat(MyService.GYROSCOPE_DATA);
+                        mRsaTextView.setText(rsaVal.toString());
+                        mRsgTextView.setText(rsgVal.toString());
                         setRequestedOrientation(mCurrentScreenOrientation);
                         mBound = false;
                         unbindService(mConnection);
                     } else {
-                        Toast.makeText(MainActivity.this, "a is null still", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "Return data is null still", Toast.LENGTH_SHORT).show();
                         break;
                     }
                 } else {
@@ -178,9 +178,9 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             MyService.MyBinder binder = (MyService.MyBinder) service;
-            serviceobj = binder.getService();
-            if (serviceobj == null) {
-                System.out.println("Service obj is indeed null");
+            mServiceobj = binder.getService();
+            if (mServiceobj == null) {
+                Log.d(TAG, "Service obj is indeed null");
             }
             Toast.makeText(MainActivity.this, "bound service started", Toast.LENGTH_SHORT).show();
         }
