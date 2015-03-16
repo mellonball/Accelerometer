@@ -4,9 +4,11 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -20,6 +22,12 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     private Button create, invoke, data;
     public static TextView rsa, rsg;
     private MyService serviceobj;
+    private boolean mBound;
+    private int mCurrentScreenOrientation;
+
+    private static final String TAG = MainActivity.class.getCanonicalName();
+    private static final String RSA_KEY = "RSA";
+    private static final String RSG_KEY = "RSG";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,23 +44,66 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
 
         rsa = (TextView) findViewById(R.id.rsa);
         rsg = (TextView) findViewById(R.id.rsg);
+
+        if (savedInstanceState != null) {
+            rsa.setText(savedInstanceState.getString(RSA_KEY));
+            rsg.setText(savedInstanceState.getString(RSG_KEY));
+        }
+
+        mBound = false;
     }
 
-    /*
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        Log.d(TAG, "onSaveInstanceState");
+        Log.d(TAG, "RSA Text: " + rsa.getText().toString());
+        Log.d(TAG, "RSG Text: " + rsg.getText().toString());
+        outState.putString(RSA_KEY, rsa.getText().toString());
+        outState.putString(RSG_KEY, rsg.getText().toString());
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        /* The bundle in onSaveInstanceState is also passed to onCreate, so we
+         * are updating the UI there instead of here.
+         */
+    }
+
     @Override
     protected void onStart() {
         super.onStart();
+        Log.d(TAG, "onStart'd");
+        /*if(!mBound) {
+            Intent boundIntent = new Intent(this, MyService.class);
+            bindService(boundIntent, mConnection, Context.BIND_AUTO_CREATE);
+            mBound = true;
+        }*/
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.d(TAG, "onPause'd");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d(TAG, "onResume'd");
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        // Unbind from the service
+        Log.d(TAG, "onStop'd");
+         //Unbind from the service
         if (mBound) {
             unbindService(mConnection);
             mBound = false;
         }
-    }*/
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -82,25 +133,42 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
             case R.id.buttonCreateBS:
                 Intent boundIntent = new Intent(this, MyService.class);
                 bindService(boundIntent, mConnection, Context.BIND_AUTO_CREATE);
+                mBound = true;
                 System.out.println("You clicked create bs");
                 break;
 
             case R.id.buttonInvoke:
-                serviceobj.collectSensorData();
-                Toast.makeText(MainActivity.this, "collecting", Toast.LENGTH_SHORT).show();
-                break;
-
-            case R.id.buttonData:
-                Bundle a = serviceobj.getSensorData();
-                if (serviceobj.finalAccelerometerVal && serviceobj.finalGyroscopeVal) {
-                    Float rsaVal = a.getFloat("accelerometerVal");
-                    Float rsgVal = a.getFloat("gyroscopeVal");
-                    rsa.setText(rsaVal.toString());
-                    rsg.setText(rsgVal.toString());
-                } else {
-                    Toast.makeText(MainActivity.this, "a is null still", Toast.LENGTH_SHORT).show();
+                if (mBound) {
+                    serviceobj.collectSensorData();
+                    mCurrentScreenOrientation = getRequestedOrientation();
+                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR);
+                    Toast.makeText(MainActivity.this, "collecting", Toast.LENGTH_SHORT).show();
                 }
-                unbindService(mConnection);
+                break;
+            case R.id.buttonData:
+                if (mBound) {
+                    Bundle a;
+                    if( serviceobj != null) {
+                        a = serviceobj.getSensorData();
+                    } else {
+                        Toast.makeText(MainActivity.this, "serviceobj is null", Toast.LENGTH_LONG).show();
+                        break;
+                    }
+                    if (serviceobj.finalAccelerometerVal && serviceobj.finalGyroscopeVal) {
+                        Float rsaVal = a.getFloat("accelerometerVal");
+                        Float rsgVal = a.getFloat("gyroscopeVal");
+                        rsa.setText(rsaVal.toString());
+                        rsg.setText(rsgVal.toString());
+                        setRequestedOrientation(mCurrentScreenOrientation);
+                        mBound = false;
+                        unbindService(mConnection);
+                    } else {
+                        Toast.makeText(MainActivity.this, "a is null still", Toast.LENGTH_SHORT).show();
+                        break;
+                    }
+                } else {
+                    Toast.makeText(MainActivity.this, "Service is not registered", Toast.LENGTH_LONG).show();
+                }
                 break;
         }
     }

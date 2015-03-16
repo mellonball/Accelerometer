@@ -115,8 +115,8 @@ public class MyService extends Service implements SensorEventListener{
 
     //function to start collecting accelerometer and gyroscope values
     public void collectSensorData() {
-
         startCollecting = true;
+
     }
 
     public Bundle getSensorData() {
