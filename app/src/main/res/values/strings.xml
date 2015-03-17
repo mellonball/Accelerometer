@@ -3,4 +3,10 @@
 
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
+    <string name="activity_icon_description">Status</string>
+    <string name="activity_status">Status</string>
+    <string name="activity_history_date_range">12:00 PM - 12:02 PM</string>
+
+<!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>
