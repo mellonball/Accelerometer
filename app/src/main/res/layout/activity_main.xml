@@ -18,16 +18,16 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="StartCollecting"
+        android:text="Collect"
         android:id="@+id/buttonInvoke"
         android:layout_marginTop="36dp"
-        android:layout_below="@+id/rsa"
+        android:layout_below="@+id/yGravTextView"
         android:layout_centerHorizontal="true" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Data"
+        android:text="Data Btn"
         android:id="@+id/buttonData"
         android:layout_alignTop="@+id/buttonInvoke"
         android:layout_alignParentRight="true"
@@ -36,39 +36,80 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="No Data"
-        android:id="@+id/rsa"
-        android:layout_marginTop="62dp"
+        android:text="YG"
+        android:id="@+id/yGravTextView"
+        android:layout_below="@+id/yAccelTextView"
+        android:layout_alignLeft="@+id/buttonInvoke"
+        android:layout_alignStart="@+id/buttonInvoke" />
+
+    <TextView
+        android:text="XG"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/xGravTextView"
+        android:layout_alignTop="@+id/yGravTextView"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+    <TextView
+        android:text="ZG"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/zGravTextView"
+        android:layout_above="@+id/activityStatusTextView"
+        android:layout_alignRight="@+id/zAccelTextView"
+        android:layout_alignEnd="@+id/zAccelTextView"
+        android:layout_alignTop="@+id/yGravTextView" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="X: "
+        android:id="@+id/xAccelTextView"
         android:layout_alignParentTop="true"
-        android:layout_toRightOf="@+id/editText"
-        android:layout_toEndOf="@+id/editText" />
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="No Data"
-        android:id="@+id/rsg"
-        android:layout_alignTop="@+id/editText2"
-        android:layout_toRightOf="@+id/editText2"
-        android:layout_toEndOf="@+id/editText2" />
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="Y: "
+        android:id="@+id/yAccelTextView"
+        android:layout_alignParentTop="true"
+        android:layout_alignLeft="@+id/buttonInvoke"
+        android:layout_alignStart="@+id/buttonInvoke" />
 
     <TextView
-        android:text="RSA: "
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/editText"
-        android:layout_alignTop="@+id/rsa"
-        android:layout_alignRight="@+id/buttonCreateBS"
-        android:layout_alignEnd="@+id/buttonCreateBS" />
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="Z: "
+        android:id="@+id/zAccelTextView"
+        android:layout_alignLeft="@+id/buttonData"
+        android:layout_alignStart="@+id/buttonData"
+        android:layout_alignParentTop="true" />
 
     <TextView
-        android:text="RSG: "
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/editText2"
-        android:layout_alignTop="@+id/rsa"
-        android:layout_alignRight="@+id/buttonInvoke"
-        android:layout_alignEnd="@+id/buttonInvoke" />
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="Currently:"
+        android:id="@+id/textView"
+        android:layout_below="@+id/xGravTextView"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="Activity Status"
+        android:id="@+id/activityStatusTextView"
+        android:layout_below="@+id/yGravTextView"
+        android:layout_alignLeft="@+id/yGravTextView"
+        android:layout_alignStart="@+id/yGravTextView" />
 
     <fragment
         android:layout_width="wrap_content"

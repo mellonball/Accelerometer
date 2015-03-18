@@ -1,5 +1,6 @@
 package com.example.breezy.accelerometer;
 
+import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -17,17 +18,24 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
-public class MainActivity extends ActionBarActivity implements View.OnClickListener  {
+public class MainActivity extends ActionBarActivity implements View.OnClickListener, MyService.ISensorDataListener  {
 
     private Button mCreateButton, mInvokeButton, mDataButton;
-    private TextView mRsaTextView, mRsgTextView;
+    private TextView xGravTextView, yGravTextView, zGravTextView;
+    private TextView xAccelTextView, yAccelTextView, zAccelTextView, mStatusView;
     private MyService mServiceobj;
     private boolean mBound;
     private int mCurrentScreenOrientation;
+    private Activity mActivity;
 
     private final String TAG = MainActivity.class.getCanonicalName();
     private final String RSA_KEY = "RSA";
     private final String RSG_KEY = "RSG";
+
+    //TODO: Add call backs in this activity whenever we edit the fragment UI
+    public interface IHistoryChanged {
+        public void newHistoryActivity(HistoryItem item);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,13 +50,21 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         mInvokeButton.setOnClickListener(this);
         mDataButton.setOnClickListener(this);
 
-        mRsaTextView = (TextView) findViewById(R.id.rsa);
-        mRsgTextView = (TextView) findViewById(R.id.rsg);
 
-        if (savedInstanceState != null) {
+        //TODO: These were used to view real time data. Should be removed when app is done
+        xAccelTextView = (TextView) findViewById(R.id.xAccelTextView);
+        yAccelTextView = (TextView) findViewById(R.id.yAccelTextView);
+        zAccelTextView = (TextView) findViewById(R.id.zAccelTextView);
+        xGravTextView = (TextView) findViewById(R.id.xGravTextView);
+        yGravTextView = (TextView) findViewById(R.id.yGravTextView);
+        zGravTextView = (TextView) findViewById(R.id.zGravTextView);
+        mStatusView = (TextView) findViewById(R.id.activityStatusTextView);
+
+        //TODO: Needs to be removed unless we are saving some other state
+        /*if (savedInstanceState != null) {
             mRsaTextView.setText(savedInstanceState.getString(RSA_KEY));
             mRsgTextView.setText(savedInstanceState.getString(RSG_KEY));
-        }
+        }*/
 
         mBound = false;
     }
@@ -56,11 +72,12 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        Log.d(TAG, "onSaveInstanceState");
+        //TODO: Needs to be removed unless we are saving something else
+        /*Log.d(TAG, "onSaveInstanceState");
         Log.d(TAG, "RSA Text: " + mRsaTextView.getText().toString());
         Log.d(TAG, "RSG Text: " + mRsgTextView.getText().toString());
         outState.putString(RSA_KEY, mRsaTextView.getText().toString());
-        outState.putString(RSG_KEY, mRsgTextView.getText().toString());
+        outState.putString(RSG_KEY, mRsgTextView.getText().toString());*/
     }
 
     @Override
@@ -100,6 +117,7 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         Log.d(TAG, "onStop'd");
          //Unbind from the service
         if (mBound) {
+            mServiceobj.disconnect();
             unbindService(mConnection);
             mBound = false;
         }
@@ -127,19 +145,20 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         return super.onOptionsItemSelected(item);
     }
 
+    //TODO: Needs to be cleaned up, there's a lot here we don't need
     @Override
     public void onClick(View v) {
         switch(v.getId()) {
             case R.id.buttonCreateBS:
                 Intent boundIntent = new Intent(this, MyService.class);
                 bindService(boundIntent, mConnection, Context.BIND_AUTO_CREATE);
-                mBound = true;
                 Log.d(TAG, "You clicked create bs");
                 break;
 
             case R.id.buttonInvoke:
                 if (mBound) {
                     mServiceobj.collectSensorData();
+                    mServiceobj.addListener(this);
                     mCurrentScreenOrientation = getRequestedOrientation();
                     setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR);
                     Toast.makeText(MainActivity.this, "collecting", Toast.LENGTH_SHORT).show();
@@ -157,8 +176,8 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
                     if ( mServiceobj.isSensorDataReady() ) {
                         Float rsaVal = returnData.getFloat(MyService.ACCELEROMETER_DATA);
                         Float rsgVal = returnData.getFloat(MyService.GYROSCOPE_DATA);
-                        mRsaTextView.setText(rsaVal.toString());
-                        mRsgTextView.setText(rsgVal.toString());
+                        //mRsaTextView.setText(rsaVal.toString());
+                        //mRsgTextView.setText(rsgVal.toString());
                         setRequestedOrientation(mCurrentScreenOrientation);
                         mBound = false;
                         unbindService(mConnection);
@@ -182,6 +201,7 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
             if (mServiceobj == null) {
                 Log.d(TAG, "Service obj is indeed null");
             }
+            mBound = true;
             Toast.makeText(MainActivity.this, "bound service started", Toast.LENGTH_SHORT).show();
         }
 
@@ -191,4 +211,23 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
 
         }
     };
+
+    //TODO: Used to view real time data, need to remove it when we're done
+    @Override
+    public void onSensorDataChanged(Bundle data) {
+
+        xAccelTextView.setText(getString(R.string.x_move_acceleration) + ": " +
+                String.format("%.4f", data.getFloat(MyService.ACCELEROMETER_X)));
+        yAccelTextView.setText(getString(R.string.y_move_acceleration) + ": " +
+                String.format("%.4f",data.getFloat(MyService.ACCELEROMETER_Y)));
+        zAccelTextView.setText(getString(R.string.z_move_acceleration) + ": " +
+                String.format("%.4f",data.getFloat(MyService.ACCELEROMETER_Z)));
+        xGravTextView.setText(getString(R.string.x_gravity_acceleration) + ": " +
+                String.format("%.4f",data.getFloat(MyService.GRAVITY_X)));
+        yGravTextView.setText(getString(R.string.y_gravity_acceleration) + ": " +
+                String.format("%.4f",data.getFloat(MyService.GRAVITY_Y)));
+        zGravTextView.setText(getString(R.string.z_gravity_acceleration) + ": " +
+                String.format("%.4f",data.getFloat(MyService.GRAVITY_Z)));
+        mStatusView.setText(data.getString(MyService.ACTIVITY_STATUS));
+    }
 }

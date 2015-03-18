@@ -7,63 +7,66 @@ import android.view.View;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.List;
+import java.util.LinkedList;
 
-public class ActivityHistoryFragment extends ListFragment {
+public class ActivityHistoryFragment extends ListFragment implements MainActivity.IHistoryChanged {
 
 
-    private List<HistoryItem> mHistoryItems;
+    private LinkedList<HistoryItem> mHistoryItems;
+    private ActivityHistoryAdapter mAdapter;
+
+    private final int MAX_HISTORY_ITEMS = 10;
 
     public ActivityHistoryFragment() {
         // Required empty public constructor
     }
 
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Resources res = getResources();
-        mHistoryItems = new ArrayList<>();
-        mHistoryItems.add(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
+        mHistoryItems = new LinkedList<>();
+        //Temporary data until we get the actual view working.
+        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
                 HistoryItem.UserActivity.SLEEPING,
                 getStartDate(0),
-                getEndDate(0) ));
-        mHistoryItems.add(new HistoryItem(res.getDrawable(R.drawable.ic_walk),
+                getEndDate(0)));
+        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_walk),
                 HistoryItem.UserActivity.WALKING,
                 getStartDate(2),
-                getEndDate(2) ));
-        mHistoryItems.add(new HistoryItem(res.getDrawable(R.drawable.ic_sit),
+                getEndDate(2)));
+        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_sit),
                 HistoryItem.UserActivity.SITTING,
                 getStartDate(4),
-                getEndDate(4) ));
-        mHistoryItems.add(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
+                getEndDate(4)));
+        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
                 HistoryItem.UserActivity.SLEEPING,
                 getStartDate(6),
-                getEndDate(6) ));
-        mHistoryItems.add(new HistoryItem(res.getDrawable(R.drawable.ic_walk),
+                getEndDate(6)));
+        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_walk),
                 HistoryItem.UserActivity.WALKING,
                 getStartDate(8),
-                getEndDate(8) ));
-        mHistoryItems.add(new HistoryItem(res.getDrawable(R.drawable.ic_sit),
+                getEndDate(8)));
+        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_sit),
                 HistoryItem.UserActivity.SITTING,
                 getStartDate(10),
-                getEndDate(10) ));
-        mHistoryItems.add(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
+                getEndDate(10)));
+        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
                 HistoryItem.UserActivity.SLEEPING,
                 getStartDate(12),
-                getEndDate(12) ));
-        mHistoryItems.add(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
+                getEndDate(12)));
+        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
                 HistoryItem.UserActivity.SLEEPING,
                 getStartDate(14),
-                getEndDate(14) ));
-        mHistoryItems.add(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
+                getEndDate(14)));
+        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
                 HistoryItem.UserActivity.SLEEPING,
                 getStartDate(16),
-                getEndDate(16) ));
-        setListAdapter(new ActivityHistoryAdapter(getActivity(), mHistoryItems));
+                getEndDate(16)));
+        mAdapter = new ActivityHistoryAdapter(getActivity(), mHistoryItems);
+        setListAdapter(mAdapter);
     }
 
     @Override
@@ -73,14 +76,22 @@ public class ActivityHistoryFragment extends ListFragment {
     }
 
     private Date getStartDate(int minutes) {
-        return new Date( (System.currentTimeMillis() + minutes * 1000) );
+        return new Date( (System.currentTimeMillis() + minutes * 60000) );
     }
 
     private Date getEndDate(int minutes) {
         Calendar cal = Calendar.getInstance();
-        cal.setTime(new Date( (System.currentTimeMillis() + minutes * 1000)) );
+        cal.setTime(new Date( (System.currentTimeMillis() + minutes * 60000)) );
         cal.add(Calendar.MINUTE, 2 + minutes);
         return cal.getTime();
     }
 
+    @Override
+    public void newHistoryActivity(HistoryItem item) {
+        mHistoryItems.push(item);
+        if(mHistoryItems.size() > MAX_HISTORY_ITEMS) {
+            mHistoryItems.removeLast();
+        }
+        mAdapter.notifyDataSetChanged();
+    }
 }

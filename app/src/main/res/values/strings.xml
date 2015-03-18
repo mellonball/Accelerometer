@@ -6,6 +6,12 @@
     <string name="activity_icon_description">Status</string>
     <string name="activity_status">Status</string>
     <string name="activity_history_date_range">12:00 PM - 12:02 PM</string>
+    <string name="x_move_acceleration">XM</string>
+    <string name="y_move_acceleration">YM</string>
+    <string name="z_move_acceleration">ZM</string>
+    <string name="x_gravity_acceleration">XG</string>
+    <string name="y_gravity_acceleration">YG</string>
+    <string name="z_gravity_acceleration">ZG</string>
 
 <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
