@@ -1,6 +1,5 @@
 package com.example.breezy.accelerometer;
 
-import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -20,36 +19,27 @@ import android.widget.Toast;
 
 public class MainActivity extends ActionBarActivity implements View.OnClickListener, MyService.ISensorDataListener  {
 
-    private Button mCreateButton, mInvokeButton, mDataButton;
+    private Button mStartActivityDetection, mStopActivityDetection;
     private TextView xGravTextView, yGravTextView, zGravTextView;
     private TextView xAccelTextView, yAccelTextView, zAccelTextView, mStatusView;
     private MyService mServiceobj;
-    private boolean mBound;
+    private boolean mBound, mDetecting;
     private int mCurrentScreenOrientation;
-    private Activity mActivity;
 
     private final String TAG = MainActivity.class.getCanonicalName();
-    private final String RSA_KEY = "RSA";
-    private final String RSG_KEY = "RSG";
-
-    //TODO: Add call backs in this activity whenever we edit the fragment UI
-    public interface IHistoryChanged {
-        public void newHistoryActivity(HistoryItem item);
-    }
+    private final String USER_SCREEN_ORIENTATION = "Orientation";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        mStartActivityDetection = (Button) findViewById(R.id.startDataCollection);
+        mStopActivityDetection = (Button) findViewById(R.id.stopDataCollection);
 
-        mCreateButton = (Button) findViewById(R.id.buttonCreateBS);
-        mInvokeButton = (Button) findViewById(R.id.buttonInvoke);
-        mDataButton = (Button) findViewById(R.id.buttonData);
+        mStartActivityDetection.setOnClickListener(this);
+        mStopActivityDetection.setOnClickListener(this);
 
-        mCreateButton.setOnClickListener(this);
-        mInvokeButton.setOnClickListener(this);
-        mDataButton.setOnClickListener(this);
-
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR);
 
         //TODO: These were used to view real time data. Should be removed when app is done
         xAccelTextView = (TextView) findViewById(R.id.xAccelTextView);
@@ -60,11 +50,11 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         zGravTextView = (TextView) findViewById(R.id.zGravTextView);
         mStatusView = (TextView) findViewById(R.id.activityStatusTextView);
 
-        //TODO: Needs to be removed unless we are saving some other state
-        /*if (savedInstanceState != null) {
-            mRsaTextView.setText(savedInstanceState.getString(RSA_KEY));
-            mRsgTextView.setText(savedInstanceState.getString(RSG_KEY));
-        }*/
+
+        if (savedInstanceState != null) {
+           //mCurrentScreenOrientation = savedInstanceState.getInt(USER_SCREEN_ORIENTATION);
+           //setRequestedOrientation(mCurrentScreenOrientation);
+        }
 
         mBound = false;
     }
@@ -72,12 +62,7 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        //TODO: Needs to be removed unless we are saving something else
-        /*Log.d(TAG, "onSaveInstanceState");
-        Log.d(TAG, "RSA Text: " + mRsaTextView.getText().toString());
-        Log.d(TAG, "RSG Text: " + mRsgTextView.getText().toString());
-        outState.putString(RSA_KEY, mRsaTextView.getText().toString());
-        outState.putString(RSG_KEY, mRsgTextView.getText().toString());*/
+        //outState.putInt(USER_SCREEN_ORIENTATION, mCurrentScreenOrientation);
     }
 
     @Override
@@ -92,23 +77,34 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     protected void onStart() {
         super.onStart();
         Log.d(TAG, "onStart'd");
-        /*if(!mBound) {
-            Intent boundIntent = new Intent(this, MyService.class);
-            bindService(boundIntent, mConnection, Context.BIND_AUTO_CREATE);
-            mBound = true;
-        }*/
+        if(!mBound) {
+            bindSensorService();
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         Log.d(TAG, "onPause'd");
+        /*if(mDetecting) {
+            Toast.makeText(MainActivity.this, "Activity Detection Halted", Toast.LENGTH_SHORT).show();
+            mDetecting = false;
+        }*/
+
+        if(mBound) {
+            mServiceobj.unregisterSensors();
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         Log.d(TAG, "onResume'd");
+
+
+        if(mBound) {
+            mServiceobj.registerSensors();
+        }
     }
 
     @Override
@@ -117,8 +113,7 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         Log.d(TAG, "onStop'd");
          //Unbind from the service
         if (mBound) {
-            mServiceobj.disconnect();
-            unbindService(mConnection);
+            unbindSensorService();
             mBound = false;
         }
     }
@@ -149,47 +144,54 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     @Override
     public void onClick(View v) {
         switch(v.getId()) {
-            case R.id.buttonCreateBS:
-                Intent boundIntent = new Intent(this, MyService.class);
-                bindService(boundIntent, mConnection, Context.BIND_AUTO_CREATE);
-                Log.d(TAG, "You clicked create bs");
+            case R.id.startDataCollection:
+                if(mBound && !mDetecting) {
+                    startActivityDetection();
+                    mDetecting = true;
+                    Log.d(TAG, "Sensors registered, collecting data");
+                    Toast.makeText(MainActivity.this, "Detecting activity ... ", Toast.LENGTH_SHORT).show();
+                } else if( !mBound ) {
+                    Toast.makeText(MainActivity.this, "Service not bound", Toast.LENGTH_SHORT).show();
+                    bindSensorService();
+                } else if( mDetecting ) {
+                    Toast.makeText(MainActivity.this, "Detection in progress ... ", Toast.LENGTH_SHORT).show();
+                }
+
                 break;
 
-            case R.id.buttonInvoke:
-                if (mBound) {
-                    mServiceobj.collectSensorData();
-                    mServiceobj.addListener(this);
-                    mCurrentScreenOrientation = getRequestedOrientation();
-                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR);
-                    Toast.makeText(MainActivity.this, "collecting", Toast.LENGTH_SHORT).show();
-                }
-                break;
-            case R.id.buttonData:
-                if (mBound) {
-                    Bundle returnData;
-                    if( mServiceobj != null) {
-                        returnData = mServiceobj.getSensorData();
-                    } else {
-                        Toast.makeText(MainActivity.this, "serviceobj is null", Toast.LENGTH_LONG).show();
-                        break;
-                    }
-                    if ( mServiceobj.isSensorDataReady() ) {
-                        Float rsaVal = returnData.getFloat(MyService.ACCELEROMETER_DATA);
-                        Float rsgVal = returnData.getFloat(MyService.GYROSCOPE_DATA);
-                        //mRsaTextView.setText(rsaVal.toString());
-                        //mRsgTextView.setText(rsgVal.toString());
-                        setRequestedOrientation(mCurrentScreenOrientation);
-                        mBound = false;
-                        unbindService(mConnection);
-                    } else {
-                        Toast.makeText(MainActivity.this, "Return data is null still", Toast.LENGTH_SHORT).show();
-                        break;
-                    }
+            case R.id.stopDataCollection:
+                if (mBound && mDetecting) {
+                    stopActivityDetection();
+                    mDetecting = false;
+                    mServiceobj.clearCurrentData();
+                    Toast.makeText(MainActivity.this, "Detection stopped", Toast.LENGTH_SHORT).show();
+
                 } else {
-                    Toast.makeText(MainActivity.this, "Service is not registered", Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this, "Not Collecting Data", Toast.LENGTH_SHORT).show();
                 }
                 break;
         }
+    }
+
+    private void bindSensorService() {
+        Intent boundIntent = new Intent(this, MyService.class);
+        bindService(boundIntent, mConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    private void unbindSensorService() {
+        mServiceobj.unregisterSensors();
+        mServiceobj.removeListener(this);
+        unbindService(mConnection);
+    }
+
+    private void startActivityDetection() {
+        mServiceobj.addListener(this);
+        mServiceobj.registerSensors();
+    }
+
+    private void stopActivityDetection() {
+        mServiceobj.removeListener(this);
+        mServiceobj.unregisterSensors();
     }
 
     private ServiceConnection mConnection = new ServiceConnection() {

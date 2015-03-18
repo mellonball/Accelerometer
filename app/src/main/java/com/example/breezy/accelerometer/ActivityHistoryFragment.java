@@ -11,7 +11,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedList;
 
-public class ActivityHistoryFragment extends ListFragment implements MainActivity.IHistoryChanged {
+public class ActivityHistoryFragment extends ListFragment {
 
 
     private LinkedList<HistoryItem> mHistoryItems;
@@ -86,7 +86,8 @@ public class ActivityHistoryFragment extends ListFragment implements MainActivit
         return cal.getTime();
     }
 
-    @Override
+    //Used by MainActivity to update UI
+    //Need to get to this function with fragment manager (I think?)
     public void newHistoryActivity(HistoryItem item) {
         mHistoryItems.push(item);
         if(mHistoryItems.size() > MAX_HISTORY_ITEMS) {
