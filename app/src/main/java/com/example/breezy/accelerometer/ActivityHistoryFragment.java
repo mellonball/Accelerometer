@@ -7,8 +7,6 @@ import android.view.View;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import java.util.Calendar;
-import java.util.Date;
 import java.util.LinkedList;
 
 public class ActivityHistoryFragment extends ListFragment {
@@ -28,43 +26,6 @@ public class ActivityHistoryFragment extends ListFragment {
         super.onCreate(savedInstanceState);
         Resources res = getResources();
         mHistoryItems = new LinkedList<>();
-        //Temporary data until we get the actual view working.
-        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
-                HistoryItem.UserActivity.SLEEPING,
-                getStartDate(0),
-                getEndDate(0)));
-        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_walk),
-                HistoryItem.UserActivity.WALKING,
-                getStartDate(2),
-                getEndDate(2)));
-        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_sit),
-                HistoryItem.UserActivity.SITTING,
-                getStartDate(4),
-                getEndDate(4)));
-        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
-                HistoryItem.UserActivity.SLEEPING,
-                getStartDate(6),
-                getEndDate(6)));
-        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_walk),
-                HistoryItem.UserActivity.WALKING,
-                getStartDate(8),
-                getEndDate(8)));
-        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_sit),
-                HistoryItem.UserActivity.SITTING,
-                getStartDate(10),
-                getEndDate(10)));
-        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
-                HistoryItem.UserActivity.SLEEPING,
-                getStartDate(12),
-                getEndDate(12)));
-        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
-                HistoryItem.UserActivity.SLEEPING,
-                getStartDate(14),
-                getEndDate(14)));
-        mHistoryItems.push(new HistoryItem(res.getDrawable(R.drawable.ic_sleep),
-                HistoryItem.UserActivity.SLEEPING,
-                getStartDate(16),
-                getEndDate(16)));
         mAdapter = new ActivityHistoryAdapter(getActivity(), mHistoryItems);
         setListAdapter(mAdapter);
     }
@@ -75,24 +36,14 @@ public class ActivityHistoryFragment extends ListFragment {
         Toast.makeText(getActivity(), item.getActivity().toString(), Toast.LENGTH_SHORT).show();
     }
 
-    private Date getStartDate(int minutes) {
-        return new Date( (System.currentTimeMillis() + minutes * 60000) );
-    }
-
-    private Date getEndDate(int minutes) {
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(new Date( (System.currentTimeMillis() + minutes * 60000)) );
-        cal.add(Calendar.MINUTE, 2 + minutes);
-        return cal.getTime();
-    }
-
     //Used by MainActivity to update UI
     //Need to get to this function with fragment manager (I think?)
-    public void newHistoryActivity(HistoryItem item) {
+    public void addNewHistoryActivity(HistoryItem item) {
         mHistoryItems.push(item);
         if(mHistoryItems.size() > MAX_HISTORY_ITEMS) {
             mHistoryItems.removeLast();
         }
         mAdapter.notifyDataSetChanged();
     }
+
 }

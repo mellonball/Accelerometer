@@ -24,12 +24,6 @@ import java.util.concurrent.TimeUnit;
 
 public class MyService extends Service implements SensorEventListener {
 
-
-    private SensorManager mSensorManager;
-    private Sensor mAccelerometer;
-    private Sensor mGyroscope;
-    private IBinder myTempBinder = new MyBinder();
-
     private static int SIT = 0;
     private static int SLEEP = 1;
     private static int WALK  = 2;
@@ -45,7 +39,19 @@ public class MyService extends Service implements SensorEventListener {
     public static final String ACTIVITY_STATUS = "Activity Status";
 
     private final String TAG = MyService.class.getCanonicalName();
+    private final float kFilteringFactor = 0.1f;
+    private final int POLLING_INTERVAL_SECONDS = 1;
+    //Locking acceleration and gravity during collection
+    //Work done in same thread, so can be sync'd
+    private final Object mSensorDataLock = new Object();
+    //Locking polling, only permit one lock
+    //Need semaphore for multi threads
+    private final static Semaphore mPollingDataLock = new Semaphore(1);
 
+    private SensorManager mSensorManager;
+    private Sensor mAccelerometer;
+    private Sensor mGyroscope;
+    private IBinder myTempBinder = new MyBinder();
     private List<ISensorDataListener> mSensorDataListeners;
     private Map<HistoryItem.UserActivity, Integer> mSampledUserActivity;
     private AccelerationItem mMovementAcceleration;
@@ -53,14 +59,6 @@ public class MyService extends Service implements SensorEventListener {
     private ScheduledExecutorService mThreadScheduler;
     private ScheduledFuture mActivityPoller;
     private Runnable mPollUserActivity;
-    private final float kFilteringFactor = 0.1f;
-
-    //Locking acceleration and gravity during collection
-    //Work done in same thread, so can be sync'd
-    private final Object mSensorDataLock = new Object();
-    //Locking polling, only permit one lock
-    //Need semaphore for multi threads
-    private final static Semaphore mPollingDataLock = new Semaphore(1);
 
     //TODO: Temp Interface for passing real time accelerometer data to MainActivity, remove before finish.
     public interface ISensorDataListener {
@@ -184,13 +182,18 @@ public class MyService extends Service implements SensorEventListener {
 
     //Used to disconnect sensors
     public void stopDataCollection() {
-        mActivityPoller.cancel(true);
+        if( mActivityPoller != null ) {
+            mActivityPoller.cancel(true);
+        }
         mSensorManager.unregisterListener(this);
     }
 
     //Used to connect to our sensors when we start collecting data
     public void startDataCollection() {
-        mActivityPoller = mThreadScheduler.scheduleAtFixedRate(mPollUserActivity, 0, 1, TimeUnit.SECONDS);
+        mActivityPoller = mThreadScheduler.scheduleAtFixedRate(mPollUserActivity,
+                0,
+                POLLING_INTERVAL_SECONDS,
+                TimeUnit.SECONDS);
         mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
     }

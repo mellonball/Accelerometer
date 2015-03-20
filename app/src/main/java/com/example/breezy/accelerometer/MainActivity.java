@@ -5,7 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.ActivityInfo;
+import android.content.res.Resources;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
@@ -17,6 +20,12 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.Date;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
 
 public class MainActivity extends ActionBarActivity implements View.OnClickListener, MyService.ISensorDataListener {
 
@@ -24,11 +33,17 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     private TextView xGravTextView, yGravTextView, zGravTextView;
     private TextView xAccelTextView, yAccelTextView, zAccelTextView, mStatusView;
     private MyService mServiceobj;
+    private ActivityHistoryFragment mHistoryFragment;
+    private ScheduledExecutorService mThreadScheduler;
+    private ScheduledFuture mActivityPoller;
+    private Handler mHandler;
+    private Runnable mPollUserActivity;
+    private Date mPollStartTime;
+
     private boolean mBound, mDetecting;
-    private int mCurrentScreenOrientation;
 
     private final String TAG = MainActivity.class.getCanonicalName();
-    private final String USER_SCREEN_ORIENTATION = "Orientation";
+    private final int POLLING_INTERVAL_MINUTES = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,17 +65,34 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         yGravTextView = (TextView) findViewById(R.id.yGravTextView);
         zGravTextView = (TextView) findViewById(R.id.zGravTextView);
         mStatusView = (TextView) findViewById(R.id.activityStatusTextView);
+        mHistoryFragment = (ActivityHistoryFragment) getFragmentManager().findFragmentById(R.id.activity_history_fragment);
+        mThreadScheduler = Executors.newSingleThreadScheduledExecutor();
+        mPollUserActivity = new Runnable() {
 
+            @Override
+            public void run() {
+                try {
+                    Date pollEndTime = new Date(System.currentTimeMillis());
+                    HistoryItem.UserActivity activity = mServiceobj.getSampledUserActivity();
+                    Drawable icon = getUserActivityIcon(activity);
+                    HistoryItem item = new HistoryItem(icon, activity, mPollStartTime, pollEndTime);
+                    mHistoryFragment.addNewHistoryActivity(item);
+                    mPollStartTime = pollEndTime;
+                } catch (Exception e) {
+                    Log.d(TAG, "Polling activity Exception: " + e.toString());
+                }
+            }
+        };
+        // We want to keep the screen on since the activity relies on polling
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         if (savedInstanceState != null) {
            //mCurrentScreenOrientation = savedInstanceState.getInt(USER_SCREEN_ORIENTATION);
            //setRequestedOrientation(mCurrentScreenOrientation);
         }
 
-        /*
-         * We want to keep the screen on since the activity relies on polling
-         */
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        //Used to post to UI
+        mHandler = new Handler();
 
         mBound = false;
         mDetecting = false;
@@ -149,7 +181,6 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         return super.onOptionsItemSelected(item);
     }
 
-    //TODO: Needs to be cleaned up, there's a lot here we don't need
     @Override
     public void onClick(View v) {
         switch(v.getId()) {
@@ -196,11 +227,25 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     private void startActivityDetection() {
         mServiceobj.addListener(this);
         mServiceobj.startDataCollection();
+        mPollStartTime = new Date(System.currentTimeMillis());
+        mActivityPoller = mThreadScheduler.scheduleAtFixedRate(
+                new Runnable() {
+                    @Override
+                   public void run() {
+                       mHandler.post(mPollUserActivity);
+                   }
+               },
+                POLLING_INTERVAL_MINUTES,
+                POLLING_INTERVAL_MINUTES,
+                TimeUnit.MINUTES);
     }
 
     private void stopActivityDetection() {
         mServiceobj.removeListener(this);
         mServiceobj.stopDataCollection();
+        if( mActivityPoller != null ) {
+            mActivityPoller.cancel(true);
+        }
     }
 
     private ServiceConnection mConnection = new ServiceConnection() {
@@ -241,4 +286,18 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
                 String.format("%.4f",data.getFloat(MyService.GRAVITY_Z)));
         mStatusView.setText(data.getString(MyService.ACTIVITY_STATUS));
     }
+
+    private Drawable getUserActivityIcon(HistoryItem.UserActivity activity) {
+        Resources res = getResources();
+        switch(activity) {
+            case SITTING:
+                return res.getDrawable(R.drawable.ic_sit);
+            case WALKING:
+                return res.getDrawable(R.drawable.ic_walk);
+            case SLEEPING:
+                return res.getDrawable(R.drawable.ic_sleep);
+        }
+        return null;
+    }
+
 }
