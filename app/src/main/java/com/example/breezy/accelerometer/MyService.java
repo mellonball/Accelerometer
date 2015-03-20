@@ -12,7 +12,14 @@ import android.os.IBinder;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 
 public class MyService extends Service implements SensorEventListener {
@@ -40,12 +47,20 @@ public class MyService extends Service implements SensorEventListener {
     private final String TAG = MyService.class.getCanonicalName();
 
     private List<ISensorDataListener> mSensorDataListeners;
+    private Map<HistoryItem.UserActivity, Integer> mSampledUserActivity;
     private AccelerationItem mMovementAcceleration;
     private AccelerationItem mGravityAcceleration;
+    private ScheduledExecutorService mThreadScheduler;
+    private ScheduledFuture mActivityPoller;
+    private Runnable mPollUserActivity;
     private final float kFilteringFactor = 0.1f;
 
     //Locking acceleration and gravity during collection
-    private final Object lock = new Object();
+    //Work done in same thread, so can be sync'd
+    private final Object mSensorDataLock = new Object();
+    //Locking polling, only permit one lock
+    //Need semaphore for multi threads
+    private final static Semaphore mPollingDataLock = new Semaphore(1);
 
     //TODO: Temp Interface for passing real time accelerometer data to MainActivity, remove before finish.
     public interface ISensorDataListener {
@@ -72,6 +87,28 @@ public class MyService extends Service implements SensorEventListener {
         mGravityAcceleration = new AccelerationItem(0,0,0);
         //Temporary variable for displaying data in MainActivity
         mSensorDataListeners = new ArrayList<>();
+        mSampledUserActivity = new HashMap<>();
+        initializeSampledActivity();
+        mThreadScheduler = Executors.newSingleThreadScheduledExecutor();
+        mPollUserActivity = new Runnable() {
+
+            @Override
+            public void run() {
+                try {
+                    if( mPollingDataLock.tryAcquire() ) {
+                        HistoryItem.UserActivity currentActivity = getUserActivity();
+                        Integer activityCount = mSampledUserActivity.get(currentActivity) + 1;
+                        mSampledUserActivity.put(currentActivity, activityCount);
+                        Log.d(TAG, "Collected sample: " + currentActivity);
+                        mPollingDataLock.release();
+                    } else {
+                        Log.d(TAG, "Couldn't collect sample, locked out");
+                    }
+                } catch (Exception e) {
+                    Log.d(TAG, "Polling activity Exception: " + e.toString());
+                }
+            }
+        };
     }
 
     public MyService() {
@@ -99,7 +136,7 @@ public class MyService extends Service implements SensorEventListener {
         for(ISensorDataListener listener : mSensorDataListeners ) {
             if(event.sensor.getType() == Sensor.TYPE_ACCELEROMETER ) {
                 //Sync so that this event can be completed before polling for data (I think?)
-                synchronized (lock) {
+                synchronized (mSensorDataLock) {
                     mGravityAcceleration.x = event.values[0] * kFilteringFactor + mGravityAcceleration.x * (1.0f - kFilteringFactor);
                     mGravityAcceleration.y = event.values[1] * kFilteringFactor + mGravityAcceleration.y * (1.0f - kFilteringFactor);
                     mGravityAcceleration.z = event.values[2] * kFilteringFactor + mGravityAcceleration.z * (1.0f - kFilteringFactor);
@@ -108,24 +145,24 @@ public class MyService extends Service implements SensorEventListener {
                     mMovementAcceleration.z = event.values[2] - mGravityAcceleration.z;
                 }
                 Bundle sensorBundle = new Bundle();
-                Log.d(TAG, "New readings");
+                //Log.d(TAG, "New readings");
                 sensorBundle.putFloat(ACCELEROMETER_X, mMovementAcceleration.x);
-                Log.d(TAG, "mMovementAcceleration.x = " + mMovementAcceleration.x);
+                //Log.d(TAG, "mMovementAcceleration.x = " + mMovementAcceleration.x);
 
                 sensorBundle.putFloat(ACCELEROMETER_Y, mMovementAcceleration.y);
-                Log.d(TAG, "mMovementAcceleration.y = " + mMovementAcceleration.y);
+                //Log.d(TAG, "mMovementAcceleration.y = " + mMovementAcceleration.y);
 
                 sensorBundle.putFloat(ACCELEROMETER_Z, mMovementAcceleration.z);
-                Log.d(TAG, "mMovementAcceleration.z = " + mMovementAcceleration.z);
+                //Log.d(TAG, "mMovementAcceleration.z = " + mMovementAcceleration.z);
 
                 sensorBundle.putFloat(GRAVITY_X, mGravityAcceleration.x);
-                Log.d(TAG, "mGravityAcceleration.x = " + mGravityAcceleration.x);
+                //Log.d(TAG, "mGravityAcceleration.x = " + mGravityAcceleration.x);
 
                 sensorBundle.putFloat(GRAVITY_Y, mGravityAcceleration.y);
-                Log.d(TAG, "mGravityAcceleration.y = " + mGravityAcceleration.y);
+                //Log.d(TAG, "mGravityAcceleration.y = " + mGravityAcceleration.y);
 
                 sensorBundle.putFloat(GRAVITY_Z, mGravityAcceleration.z);
-                Log.d(TAG, "mGravityAcceleration.z = " + mGravityAcceleration.z);
+                //Log.d(TAG, "mGravityAcceleration.z = " + mGravityAcceleration.z);
 
                 sensorBundle.putString(ACTIVITY_STATUS, getUserActivity().toString() );
                 listener.onSensorDataChanged(sensorBundle);
@@ -146,21 +183,43 @@ public class MyService extends Service implements SensorEventListener {
     public void removeListener(ISensorDataListener listener) { mSensorDataListeners.remove(listener); }
 
     //Used to disconnect sensors
-    public void unregisterSensors() {
+    public void stopDataCollection() {
+        mActivityPoller.cancel(true);
         mSensorManager.unregisterListener(this);
     }
 
     //Used to connect to our sensors when we start collecting data
-    public void registerSensors() {
+    public void startDataCollection() {
+        mActivityPoller = mThreadScheduler.scheduleAtFixedRate(mPollUserActivity, 0, 1, TimeUnit.SECONDS);
         mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
     public void clearCurrentData() {
-        synchronized (lock) {
+        synchronized (mSensorDataLock) {
             mMovementAcceleration = new AccelerationItem(0, 0, 0);
             mGravityAcceleration = new AccelerationItem(0, 0, 0);
         }
+    }
+
+    public HistoryItem.UserActivity getSampledUserActivity()  {
+        while( !mPollingDataLock.tryAcquire() ) {
+            //Do nothing until lock is acquired
+        }
+        //Need to find activity with most samples
+        HistoryItem.UserActivity maxSampledActivity = HistoryItem.UserActivity.SLEEPING;
+        Integer maxSamples = mSampledUserActivity.get(HistoryItem.UserActivity.SLEEPING);
+        for(Map.Entry<HistoryItem.UserActivity, Integer> sample : mSampledUserActivity.entrySet()) {
+            Log.d(TAG, "Activity: " + sample.getKey().toString() + " Samples: " + sample.getValue().toString());
+            if(sample.getValue() > maxSamples) {
+                maxSamples = sample.getValue();
+                maxSampledActivity = sample.getKey();
+            }
+        }
+        Log.d(TAG, "Winner: " + maxSampledActivity.toString());
+        initializeSampledActivity();
+        mPollingDataLock.release();
+        return maxSampledActivity;
     }
 
 
@@ -168,7 +227,7 @@ public class MyService extends Service implements SensorEventListener {
     //This will probably need tweaking, this is just a first guess at the algorithm.
     private HistoryItem.UserActivity getUserActivity() {
         HistoryItem.UserActivity ret;
-        synchronized (lock) {
+        synchronized (mSensorDataLock) {
             if (Math.abs(mGravityAcceleration.x) > Math.abs(mGravityAcceleration.y) ||
                     Math.abs(mGravityAcceleration.z) > Math.abs(mGravityAcceleration.y)) {
                 prevState = state;
@@ -189,6 +248,12 @@ public class MyService extends Service implements SensorEventListener {
                 return HistoryItem.UserActivity.WALKING;
             }
         }
+    }
+
+    private void initializeSampledActivity() {
+        mSampledUserActivity.put(HistoryItem.UserActivity.SITTING, 0);
+        mSampledUserActivity.put(HistoryItem.UserActivity.SLEEPING, 0);
+        mSampledUserActivity.put(HistoryItem.UserActivity.WALKING, 0);
     }
 
 

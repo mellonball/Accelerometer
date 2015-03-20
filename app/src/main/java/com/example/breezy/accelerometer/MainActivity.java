@@ -12,6 +12,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -56,7 +57,13 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
            //setRequestedOrientation(mCurrentScreenOrientation);
         }
 
+        /*
+         * We want to keep the screen on since the activity relies on polling
+         */
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         mBound = false;
+        mDetecting = false;
     }
 
     @Override
@@ -90,9 +97,11 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
             Toast.makeText(MainActivity.this, "Activity Detection Halted", Toast.LENGTH_SHORT).show();
             mDetecting = false;
         }*/
-
         if(mBound) {
-            mServiceobj.unregisterSensors();
+            stopActivityDetection();
+            unbindSensorService();
+            mBound = false;
+            mDetecting = false;
         }
     }
 
@@ -100,10 +109,8 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     protected void onResume() {
         super.onResume();
         Log.d(TAG, "onResume'd");
-
-
-        if(mBound) {
-            mServiceobj.registerSensors();
+        if( !mBound ) {
+            bindSensorService();
         }
     }
 
@@ -113,8 +120,10 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         Log.d(TAG, "onStop'd");
          //Unbind from the service
         if (mBound) {
+            stopActivityDetection();
             unbindSensorService();
             mBound = false;
+            mDetecting = false;
         }
     }
 
@@ -179,19 +188,19 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     }
 
     private void unbindSensorService() {
-        mServiceobj.unregisterSensors();
+        mServiceobj.stopDataCollection();
         mServiceobj.removeListener(this);
         unbindService(mConnection);
     }
 
     private void startActivityDetection() {
         mServiceobj.addListener(this);
-        mServiceobj.registerSensors();
+        mServiceobj.startDataCollection();
     }
 
     private void stopActivityDetection() {
         mServiceobj.removeListener(this);
-        mServiceobj.unregisterSensors();
+        mServiceobj.stopDataCollection();
     }
 
     private ServiceConnection mConnection = new ServiceConnection() {
