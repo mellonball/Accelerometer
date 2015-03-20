@@ -74,7 +74,6 @@ public class MyService extends Service implements SensorEventListener {
         }
     }
 
-
     @Override
     public void onCreate() {
         super.onCreate();
@@ -98,6 +97,7 @@ public class MyService extends Service implements SensorEventListener {
                         Integer activityCount = mSampledUserActivity.get(currentActivity) + 1;
                         mSampledUserActivity.put(currentActivity, activityCount);
                         Log.d(TAG, "Collected sample: " + currentActivity);
+
                         mPollingDataLock.release();
                     } else {
                         Log.d(TAG, "Couldn't collect sample, locked out");

@@ -8,6 +8,7 @@ import android.content.pm.ActivityInfo;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.support.v7.app.ActionBarActivity;
@@ -20,11 +21,19 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Date;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+
+import static com.example.breezy.accelerometer.HistoryItem.*;
 
 
 public class MainActivity extends ActionBarActivity implements View.OnClickListener, MyService.ISensorDataListener {
@@ -44,6 +53,10 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
 
     private final String TAG = MainActivity.class.getCanonicalName();
     private final int POLLING_INTERVAL_MINUTES = 2;
+
+    private File writeDir;
+    private File writeFile;
+    FileWriter fw;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,11 +86,14 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
             public void run() {
                 try {
                     Date pollEndTime = new Date(System.currentTimeMillis());
-                    HistoryItem.UserActivity activity = mServiceobj.getSampledUserActivity();
+                    UserActivity activity = mServiceobj.getSampledUserActivity();
                     Drawable icon = getUserActivityIcon(activity);
                     HistoryItem item = new HistoryItem(icon, activity, mPollStartTime, pollEndTime);
                     mHistoryFragment.addNewHistoryActivity(item);
                     mPollStartTime = pollEndTime;
+                    fw.write(item.getDisplayTimeRange() + " " + activity.toString() + "\n");
+
+
                 } catch (Exception e) {
                     Log.d(TAG, "Polling activity Exception: " + e.toString());
                 }
@@ -97,6 +113,26 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         mBound = false;
         mDetecting = false;
     }
+
+    /* Checks if external storage is available for read and write */
+    public boolean isExternalStorageWritable() {
+        String state = Environment.getExternalStorageState();
+        if (Environment.MEDIA_MOUNTED.equals(state)) {
+            return true;
+        }
+        return false;
+    }
+
+    public File getDataStorageDir(String fileName) {
+        // Get the directory for the user's public pictures directory.
+        File file = new File(Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS), fileName);
+        if (!file.mkdirs()) {
+            Log.e(TAG, "Directory in downloads not created");
+        }
+        return file;
+    }
+
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
@@ -238,6 +274,53 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
                 POLLING_INTERVAL_MINUTES,
                 POLLING_INTERVAL_MINUTES,
                 TimeUnit.MINUTES);
+
+        //boolean result = isExternalStorageWritable();
+        //Log.d(TAG, "isExternalStorageWritable() = " + result);
+
+        writeDir = getDataStorageDir("AccelerometerData");
+        writeFile = new File(writeDir, "data.txt");
+
+        //open file for reading
+        try {
+            FileReader fr = new FileReader(writeFile);
+            BufferedReader br = new BufferedReader(fr);
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] tokens = line.split(" ");
+                String[] start_tokens = tokens[0].split(":");
+                String[] end_tokens = tokens[3].split(":");
+
+                int start_hr = Integer.parseInt(start_tokens[0]);
+                int start_min = Integer.parseInt(start_tokens[1]);
+                int end_hr = Integer.parseInt(end_tokens[0]);
+                int end_min = Integer.parseInt(end_tokens[1]);
+
+                HistoryItem.UserActivity currentActivity = HistoryItem.UserActivity.valueOf(tokens[5].toUpperCase());
+                Drawable currentIcon = getUserActivityIcon(currentActivity);
+                Date start = new Date(0, 0, 0, start_hr, start_min);
+                Date end = new Date(0, 0, 0, end_hr, end_min);
+
+                HistoryItem item = new HistoryItem(currentIcon, currentActivity, start, end);
+                mHistoryFragment.addNewHistoryActivity(item);
+            }
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        //get last 10 lines
+        //turn into history objects
+        //display to ui
+
+        try {
+            fw = new FileWriter(writeFile, true);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        //Log.d(TAG, "BYTES AVAILAbLE TO WRITE: " + writeFile.getFreeSpace());
     }
 
     private void stopActivityDetection() {
@@ -245,6 +328,12 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         mServiceobj.stopDataCollection();
         if( mActivityPoller != null ) {
             mActivityPoller.cancel(true);
+        }
+
+        try {
+            fw.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -287,7 +376,7 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         mStatusView.setText(data.getString(MyService.ACTIVITY_STATUS));
     }
 
-    private Drawable getUserActivityIcon(HistoryItem.UserActivity activity) {
+    private Drawable getUserActivityIcon(UserActivity activity) {
         Resources res = getResources();
         switch(activity) {
             case SITTING:
