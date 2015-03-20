@@ -17,7 +17,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
-public class MainActivity extends ActionBarActivity implements View.OnClickListener, MyService.ISensorDataListener  {
+public class MainActivity extends ActionBarActivity implements View.OnClickListener, MyService.ISensorDataListener {
 
     private Button mStartActivityDetection, mStopActivityDetection;
     private TextView xGravTextView, yGravTextView, zGravTextView;

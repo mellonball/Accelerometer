@@ -9,18 +9,25 @@ import android.hardware.SensorManager;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
 
 
-public class MyService extends Service implements SensorEventListener{
+public class MyService extends Service implements SensorEventListener {
 
 
     private SensorManager mSensorManager;
     private Sensor mAccelerometer;
     private Sensor mGyroscope;
     private IBinder myTempBinder = new MyBinder();
+
+    private static int SIT = 0;
+    private static int SLEEP = 1;
+    private static int WALK  = 2;
+    private static int state;
+    private static int prevState;
 
     public static final String ACCELEROMETER_X = "Accelerometer X Value";
     public static final String ACCELEROMETER_Y = "Accelerometer Y Value";
@@ -101,12 +108,25 @@ public class MyService extends Service implements SensorEventListener{
                     mMovementAcceleration.z = event.values[2] - mGravityAcceleration.z;
                 }
                 Bundle sensorBundle = new Bundle();
+                Log.d(TAG, "New readings");
                 sensorBundle.putFloat(ACCELEROMETER_X, mMovementAcceleration.x);
+                Log.d(TAG, "mMovementAcceleration.x = " + mMovementAcceleration.x);
+
                 sensorBundle.putFloat(ACCELEROMETER_Y, mMovementAcceleration.y);
+                Log.d(TAG, "mMovementAcceleration.y = " + mMovementAcceleration.y);
+
                 sensorBundle.putFloat(ACCELEROMETER_Z, mMovementAcceleration.z);
+                Log.d(TAG, "mMovementAcceleration.z = " + mMovementAcceleration.z);
+
                 sensorBundle.putFloat(GRAVITY_X, mGravityAcceleration.x);
+                Log.d(TAG, "mGravityAcceleration.x = " + mGravityAcceleration.x);
+
                 sensorBundle.putFloat(GRAVITY_Y, mGravityAcceleration.y);
+                Log.d(TAG, "mGravityAcceleration.y = " + mGravityAcceleration.y);
+
                 sensorBundle.putFloat(GRAVITY_Z, mGravityAcceleration.z);
+                Log.d(TAG, "mGravityAcceleration.z = " + mGravityAcceleration.z);
+
                 sensorBundle.putString(ACTIVITY_STATUS, getUserActivity().toString() );
                 listener.onSensorDataChanged(sensorBundle);
             }
@@ -149,13 +169,23 @@ public class MyService extends Service implements SensorEventListener{
     private HistoryItem.UserActivity getUserActivity() {
         HistoryItem.UserActivity ret;
         synchronized (lock) {
-            if (Math.abs(mGravityAcceleration.y) > Math.abs(mGravityAcceleration.x) &&
-                    Math.abs(mGravityAcceleration.y) > Math.abs(mGravityAcceleration.z)) {
-                return HistoryItem.UserActivity.SITTING;
-            } else if (Math.abs(mGravityAcceleration.x) > Math.abs(mGravityAcceleration.y) ||
+            if (Math.abs(mGravityAcceleration.x) > Math.abs(mGravityAcceleration.y) ||
                     Math.abs(mGravityAcceleration.z) > Math.abs(mGravityAcceleration.y)) {
+                prevState = state;
+                state = SLEEP;
                 return HistoryItem.UserActivity.SLEEPING;
-            } else {
+            }
+            else if (Math.abs(mMovementAcceleration.x) < 0.3 && Math.abs(mMovementAcceleration.y) < 0.3 && Math.abs(mMovementAcceleration.z) < 0.3) {
+                state = SIT;
+                return HistoryItem.UserActivity.SITTING;
+            }
+            else if (Math.abs(mMovementAcceleration.x) > 0.35 && Math.abs(mMovementAcceleration.y) > 0.35 && Math.abs(mGravityAcceleration.z) > 1  ||
+                    Math.abs(mMovementAcceleration.x) > 0.35 && Math.abs(mMovementAcceleration.z) > 0.35 && Math.abs(mGravityAcceleration.z) > 1 ||
+                    Math.abs(mMovementAcceleration.z) > 0.35 && Math.abs(mMovementAcceleration.y) > 0.35 && Math.abs(mGravityAcceleration.z) > 1 ) {
+                state = WALK;
+                return HistoryItem.UserActivity.WALKING;
+            }
+            else {
                 return HistoryItem.UserActivity.WALKING;
             }
         }
