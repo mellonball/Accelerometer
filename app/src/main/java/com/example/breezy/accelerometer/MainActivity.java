@@ -33,7 +33,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import static com.example.breezy.accelerometer.HistoryItem.*;
+import static com.example.breezy.accelerometer.HistoryItem.UserActivity;
 
 
 public class MainActivity extends ActionBarActivity implements View.OnClickListener, MyService.ISensorDataListener {
@@ -50,7 +50,7 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     private Date mPollStartTime;
 
     private boolean mBound, mDetecting;
-    public static final boolean DEBUG = false;
+    public static final boolean DEBUG = true;
 
     private final String TAG = MainActivity.class.getCanonicalName();
     private final int POLLING_INTERVAL_MINUTES = 2;
@@ -84,6 +84,52 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
 
         mHistoryFragment = (ActivityHistoryFragment) getFragmentManager().findFragmentById(R.id.activity_history_fragment);
         mThreadScheduler = Executors.newSingleThreadScheduledExecutor();
+
+        writeDir = getDataStorageDir("AccelerometerData");
+        writeFile = new File(writeDir, "data.txt");
+
+        /**
+         * open file for reading, get prior activities for the fragment to display on UI
+         * NOTE the file could be quite long. May want to use writeFile.getFreeSpace() to find out how many bytes
+         *      are available to use or come up with some method for reducing the file size eventually.
+         */
+        try {
+            FileReader fr = new FileReader(writeFile);
+            BufferedReader br = new BufferedReader(fr);
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] tokens = line.split(" ");
+                String[] start_tokens = tokens[0].split(":");
+                String[] end_tokens = tokens[3].split(":");
+
+                int start_hr = Integer.parseInt(start_tokens[0]);
+                int start_min = Integer.parseInt(start_tokens[1]);
+                int end_hr = Integer.parseInt(end_tokens[0]);
+                int end_min = Integer.parseInt(end_tokens[1]);
+
+                HistoryItem.UserActivity currentActivity = HistoryItem.UserActivity.valueOf(tokens[5].toUpperCase());
+                Drawable currentIcon = getUserActivityIcon(currentActivity);
+                Date start = new Date(0, 0, 0, start_hr, start_min);
+                Date end = new Date(0, 0, 0, end_hr, end_min);
+
+                HistoryItem item = new HistoryItem(currentIcon, currentActivity, start, end);
+                mHistoryFragment.addNewHistoryActivity(item);
+            }
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            fw = new FileWriter(writeFile, true);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        //Log.d(TAG, "BYTES AVAILAbLE TO WRITE: " + writeFile.getFreeSpace());
+
+
         mPollUserActivity = new Runnable() {
 
             @Override
@@ -112,6 +158,8 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
 
         mBound = false;
         mDetecting = false;
+
+
     }
 
     /* Checks if external storage is available for read and write */
@@ -259,52 +307,7 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
                 POLLING_INTERVAL_MINUTES,
                 POLLING_INTERVAL_MINUTES,
                 TimeUnit.MINUTES);
-        //boolean result = isExternalStorageWritable();
-        //Log.d(TAG, "isExternalStorageWritable() = " + result);
 
-        writeDir = getDataStorageDir("AccelerometerData");
-        writeFile = new File(writeDir, "data.txt");
-
-        //open file for reading
-        try {
-            FileReader fr = new FileReader(writeFile);
-            BufferedReader br = new BufferedReader(fr);
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] tokens = line.split(" ");
-                String[] start_tokens = tokens[0].split(":");
-                String[] end_tokens = tokens[3].split(":");
-
-                int start_hr = Integer.parseInt(start_tokens[0]);
-                int start_min = Integer.parseInt(start_tokens[1]);
-                int end_hr = Integer.parseInt(end_tokens[0]);
-                int end_min = Integer.parseInt(end_tokens[1]);
-
-                HistoryItem.UserActivity currentActivity = HistoryItem.UserActivity.valueOf(tokens[5].toUpperCase());
-                Drawable currentIcon = getUserActivityIcon(currentActivity);
-                Date start = new Date(0, 0, 0, start_hr, start_min);
-                Date end = new Date(0, 0, 0, end_hr, end_min);
-
-                HistoryItem item = new HistoryItem(currentIcon, currentActivity, start, end);
-                mHistoryFragment.addNewHistoryActivity(item);
-            }
-
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        //get last 10 lines
-        //turn into history objects
-        //display to ui
-
-        try {
-            fw = new FileWriter(writeFile, true);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        //Log.d(TAG, "BYTES AVAILAbLE TO WRITE: " + writeFile.getFreeSpace());
     }
 
     private void stopActivityDetection() {
