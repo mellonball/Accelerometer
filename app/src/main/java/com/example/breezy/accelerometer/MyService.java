@@ -60,7 +60,6 @@ public class MyService extends Service implements SensorEventListener {
     private ScheduledFuture mActivityPoller;
     private Runnable mPollUserActivity;
 
-    //TODO: Temp Interface for passing real time accelerometer data to MainActivity, remove before finish.
     public interface ISensorDataListener {
         public void onSensorDataChanged(Bundle data);
     }
@@ -142,28 +141,30 @@ public class MyService extends Service implements SensorEventListener {
                     mMovementAcceleration.y= event.values[1] - mGravityAcceleration.y;
                     mMovementAcceleration.z = event.values[2] - mGravityAcceleration.z;
                 }
-                Bundle sensorBundle = new Bundle();
-                //Log.d(TAG, "New readings");
-                sensorBundle.putFloat(ACCELEROMETER_X, mMovementAcceleration.x);
-                //Log.d(TAG, "mMovementAcceleration.x = " + mMovementAcceleration.x);
+                if( MainActivity.DEBUG ) {
+                    Bundle sensorBundle = new Bundle();
+                    //Log.d(TAG, "New readings");
+                    sensorBundle.putFloat(ACCELEROMETER_X, mMovementAcceleration.x);
+                    //Log.d(TAG, "mMovementAcceleration.x = " + mMovementAcceleration.x);
 
-                sensorBundle.putFloat(ACCELEROMETER_Y, mMovementAcceleration.y);
-                //Log.d(TAG, "mMovementAcceleration.y = " + mMovementAcceleration.y);
+                    sensorBundle.putFloat(ACCELEROMETER_Y, mMovementAcceleration.y);
+                    //Log.d(TAG, "mMovementAcceleration.y = " + mMovementAcceleration.y);
 
-                sensorBundle.putFloat(ACCELEROMETER_Z, mMovementAcceleration.z);
-                //Log.d(TAG, "mMovementAcceleration.z = " + mMovementAcceleration.z);
+                    sensorBundle.putFloat(ACCELEROMETER_Z, mMovementAcceleration.z);
+                    //Log.d(TAG, "mMovementAcceleration.z = " + mMovementAcceleration.z);
 
-                sensorBundle.putFloat(GRAVITY_X, mGravityAcceleration.x);
-                //Log.d(TAG, "mGravityAcceleration.x = " + mGravityAcceleration.x);
+                    sensorBundle.putFloat(GRAVITY_X, mGravityAcceleration.x);
+                    //Log.d(TAG, "mGravityAcceleration.x = " + mGravityAcceleration.x);
 
-                sensorBundle.putFloat(GRAVITY_Y, mGravityAcceleration.y);
-                //Log.d(TAG, "mGravityAcceleration.y = " + mGravityAcceleration.y);
+                    sensorBundle.putFloat(GRAVITY_Y, mGravityAcceleration.y);
+                    //Log.d(TAG, "mGravityAcceleration.y = " + mGravityAcceleration.y);
 
-                sensorBundle.putFloat(GRAVITY_Z, mGravityAcceleration.z);
-                //Log.d(TAG, "mGravityAcceleration.z = " + mGravityAcceleration.z);
+                    sensorBundle.putFloat(GRAVITY_Z, mGravityAcceleration.z);
+                    //Log.d(TAG, "mGravityAcceleration.z = " + mGravityAcceleration.z);
 
-                sensorBundle.putString(ACTIVITY_STATUS, getUserActivity().toString() );
-                listener.onSensorDataChanged(sensorBundle);
+                    sensorBundle.putString(ACTIVITY_STATUS, getUserActivity().toString() );
+                    listener.onSensorDataChanged(sensorBundle);
+                }
             }
         }
 
@@ -174,7 +175,7 @@ public class MyService extends Service implements SensorEventListener {
 
     }
 
-    //TODO: Used to pass real time accelerometer data to main view, won't need this when we're done
+    //Used for debug view
     public void addListener(ISensorDataListener listener) {
         mSensorDataListeners.add(listener);
     }

@@ -50,6 +50,7 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     private Date mPollStartTime;
 
     private boolean mBound, mDetecting;
+    public static final boolean DEBUG = false;
 
     private final String TAG = MainActivity.class.getCanonicalName();
     private final int POLLING_INTERVAL_MINUTES = 2;
@@ -61,7 +62,18 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        if(DEBUG) {
+            setContentView(R.layout.activity_main_debug);
+            xAccelTextView = (TextView) findViewById(R.id.xAccelTextView);
+            yAccelTextView = (TextView) findViewById(R.id.yAccelTextView);
+            zAccelTextView = (TextView) findViewById(R.id.zAccelTextView);
+            xGravTextView = (TextView) findViewById(R.id.xGravTextView);
+            yGravTextView = (TextView) findViewById(R.id.yGravTextView);
+            zGravTextView = (TextView) findViewById(R.id.zGravTextView);
+            mStatusView = (TextView) findViewById(R.id.activityStatusTextView);
+        } else {
+            setContentView(R.layout.activity_main);
+        }
         mStartActivityDetection = (Button) findViewById(R.id.startDataCollection);
         mStopActivityDetection = (Button) findViewById(R.id.stopDataCollection);
 
@@ -70,14 +82,6 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
 
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR);
 
-        //TODO: These were used to view real time data. Should be removed when app is done
-        xAccelTextView = (TextView) findViewById(R.id.xAccelTextView);
-        yAccelTextView = (TextView) findViewById(R.id.yAccelTextView);
-        zAccelTextView = (TextView) findViewById(R.id.zAccelTextView);
-        xGravTextView = (TextView) findViewById(R.id.xGravTextView);
-        yGravTextView = (TextView) findViewById(R.id.yGravTextView);
-        zGravTextView = (TextView) findViewById(R.id.zGravTextView);
-        mStatusView = (TextView) findViewById(R.id.activityStatusTextView);
         mHistoryFragment = (ActivityHistoryFragment) getFragmentManager().findFragmentById(R.id.activity_history_fragment);
         mThreadScheduler = Executors.newSingleThreadScheduledExecutor();
         mPollUserActivity = new Runnable() {
@@ -99,13 +103,9 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
                 }
             }
         };
+
         // We want to keep the screen on since the activity relies on polling
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-        if (savedInstanceState != null) {
-           //mCurrentScreenOrientation = savedInstanceState.getInt(USER_SCREEN_ORIENTATION);
-           //setRequestedOrientation(mCurrentScreenOrientation);
-        }
 
         //Used to post to UI
         mHandler = new Handler();
@@ -131,21 +131,6 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
             Log.e(TAG, "Directory in downloads not created");
         }
         return file;
-    }
-
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        //outState.putInt(USER_SCREEN_ORIENTATION, mCurrentScreenOrientation);
-    }
-
-    @Override
-    protected void onRestoreInstanceState(Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-        /* The bundle in onSaveInstanceState is also passed to onCreate, so we
-         * are updating the UI there instead of here.
-         */
     }
 
     @Override
@@ -274,7 +259,6 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
                 POLLING_INTERVAL_MINUTES,
                 POLLING_INTERVAL_MINUTES,
                 TimeUnit.MINUTES);
-
         //boolean result = isExternalStorageWritable();
         //Log.d(TAG, "isExternalStorageWritable() = " + result);
 
@@ -357,23 +341,24 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         }
     };
 
-    //TODO: Used to view real time data, need to remove it when we're done
     @Override
     public void onSensorDataChanged(Bundle data) {
 
-        xAccelTextView.setText(getString(R.string.x_move_acceleration) + ": " +
-                String.format("%.4f", data.getFloat(MyService.ACCELEROMETER_X)));
-        yAccelTextView.setText(getString(R.string.y_move_acceleration) + ": " +
-                String.format("%.4f",data.getFloat(MyService.ACCELEROMETER_Y)));
-        zAccelTextView.setText(getString(R.string.z_move_acceleration) + ": " +
-                String.format("%.4f",data.getFloat(MyService.ACCELEROMETER_Z)));
-        xGravTextView.setText(getString(R.string.x_gravity_acceleration) + ": " +
-                String.format("%.4f",data.getFloat(MyService.GRAVITY_X)));
-        yGravTextView.setText(getString(R.string.y_gravity_acceleration) + ": " +
-                String.format("%.4f",data.getFloat(MyService.GRAVITY_Y)));
-        zGravTextView.setText(getString(R.string.z_gravity_acceleration) + ": " +
-                String.format("%.4f",data.getFloat(MyService.GRAVITY_Z)));
-        mStatusView.setText(data.getString(MyService.ACTIVITY_STATUS));
+        if(DEBUG) {
+            xAccelTextView.setText(getString(R.string.x_move_acceleration) + ": " +
+                    String.format("%.4f", data.getFloat(MyService.ACCELEROMETER_X)));
+            yAccelTextView.setText(getString(R.string.y_move_acceleration) + ": " +
+                    String.format("%.4f",data.getFloat(MyService.ACCELEROMETER_Y)));
+            zAccelTextView.setText(getString(R.string.z_move_acceleration) + ": " +
+                    String.format("%.4f",data.getFloat(MyService.ACCELEROMETER_Z)));
+            xGravTextView.setText(getString(R.string.x_gravity_acceleration) + ": " +
+                    String.format("%.4f",data.getFloat(MyService.GRAVITY_X)));
+            yGravTextView.setText(getString(R.string.y_gravity_acceleration) + ": " +
+                    String.format("%.4f",data.getFloat(MyService.GRAVITY_Y)));
+            zGravTextView.setText(getString(R.string.z_gravity_acceleration) + ": " +
+                    String.format("%.4f",data.getFloat(MyService.GRAVITY_Z)));
+            mStatusView.setText(data.getString(MyService.ACTIVITY_STATUS));
+        }
     }
 
     private Drawable getUserActivityIcon(UserActivity activity) {

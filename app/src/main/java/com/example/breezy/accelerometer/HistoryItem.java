@@ -30,12 +30,22 @@ public class HistoryItem {
     private final Drawable mIcon;
     private final UserActivity mActivity;
     private final Date mStartTime, mEndTime;
+    private final String mDateRange;
 
     public HistoryItem(Drawable icon, UserActivity activity, Date startTime, Date endTime) {
         mIcon = icon;
         mActivity = activity;
         mStartTime = startTime;
         mEndTime = endTime;
+        mDateRange = null;
+    }
+
+    public HistoryItem(Drawable icon, UserActivity activity, String dateRange) {
+        mIcon = icon;
+        mActivity = activity;
+        mStartTime = null;
+        mEndTime = null;
+        mDateRange = dateRange;
     }
 
     public Drawable getIcon() {
@@ -47,9 +57,14 @@ public class HistoryItem {
     }
 
     public String getDisplayTimeRange() {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("hh:mm aa");
-        String start = dateFormat.format(mStartTime);
-        String end = dateFormat.format(mEndTime);
-        return start + " - " + end;
+        if( mDateRange == null)
+        {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("hh:mm aa");
+            String start = dateFormat.format(mStartTime);
+            String end = dateFormat.format(mEndTime);
+            return start + " - " + end;
+        } else {
+            return mDateRange;
+        }
     }
 }
