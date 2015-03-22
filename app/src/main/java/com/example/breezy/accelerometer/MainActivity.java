@@ -50,7 +50,9 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
     private Date mPollStartTime;
 
     private boolean mBound, mDetecting;
-    public static final boolean DEBUG = true;
+
+    // set to true to see real-time accelerometer readings displayed on the UI
+    public static final boolean DEBUG = false;
 
     private final String TAG = MainActivity.class.getCanonicalName();
     private final int POLLING_INTERVAL_MINUTES = 2;

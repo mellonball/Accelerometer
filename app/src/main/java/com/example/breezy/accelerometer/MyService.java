@@ -144,6 +144,7 @@ public class MyService extends Service implements SensorEventListener {
                 if( MainActivity.DEBUG ) {
                     Bundle sensorBundle = new Bundle();
                     //Log.d(TAG, "New readings");
+
                     sensorBundle.putFloat(ACCELEROMETER_X, mMovementAcceleration.x);
                     //Log.d(TAG, "mMovementAcceleration.x = " + mMovementAcceleration.x);
 
@@ -232,24 +233,37 @@ public class MyService extends Service implements SensorEventListener {
     private HistoryItem.UserActivity getUserActivity() {
         HistoryItem.UserActivity ret;
         synchronized (mSensorDataLock) {
-            if (Math.abs(mGravityAcceleration.x) > Math.abs(mGravityAcceleration.y) ||
-                    Math.abs(mGravityAcceleration.z) > Math.abs(mGravityAcceleration.y)) {
-                prevState = state;
+            if (Math.abs(mGravityAcceleration.x) > 3 + Math.abs(mGravityAcceleration.y) ||
+                    Math.abs(mGravityAcceleration.z) > 3 + Math.abs(mGravityAcceleration.y)) {
+            //if (Math.abs(mGravityAcceleration.z) > Math.abs(mGravityAcceleration.y) && ( Math.abs(mGravityAcceleration.z) > Math.abs(mGravityAcceleration.x) || Math.abs(mGravityAcceleration.z) > 7 )) {
                 state = SLEEP;
                 return HistoryItem.UserActivity.SLEEPING;
             }
-            else if (Math.abs(mMovementAcceleration.x) < 0.3 && Math.abs(mMovementAcceleration.y) < 0.3 && Math.abs(mMovementAcceleration.z) < 0.3) {
+            else if ( Math.abs(mMovementAcceleration.y) > 3.5 || Math.abs(mMovementAcceleration.z) > 3.5) { // want a state transition if the
+                if (state == WALK){
+                    prevState = state;
+                    state = SIT;
+                    return HistoryItem.UserActivity.SITTING;
+                }
+                else {
+                    prevState = state;
+                    state = WALK;
+                    return HistoryItem.UserActivity.WALKING;
+                }
+
+            }
+            else if (Math.abs(mMovementAcceleration.x) < 0.35 && Math.abs(mMovementAcceleration.y) < 0.35 && Math.abs(mMovementAcceleration.z) < 0.35) {
                 state = SIT;
                 return HistoryItem.UserActivity.SITTING;
             }
-            else if (Math.abs(mMovementAcceleration.x) > 0.35 && Math.abs(mMovementAcceleration.y) > 0.35 && Math.abs(mGravityAcceleration.z) > 1  ||
+            else if ((Math.abs(mMovementAcceleration.x) > 0.35 && Math.abs(mMovementAcceleration.y) > 0.35 && Math.abs(mGravityAcceleration.z) > 1  ||
                     Math.abs(mMovementAcceleration.x) > 0.35 && Math.abs(mMovementAcceleration.z) > 0.35 && Math.abs(mGravityAcceleration.z) > 1 ||
-                    Math.abs(mMovementAcceleration.z) > 0.35 && Math.abs(mMovementAcceleration.y) > 0.35 && Math.abs(mGravityAcceleration.z) > 1 ) {
+                    Math.abs(mMovementAcceleration.z) > 0.35 && Math.abs(mMovementAcceleration.y) > 0.35 && Math.abs(mGravityAcceleration.z) > 1 )) {
                 state = WALK;
                 return HistoryItem.UserActivity.WALKING;
             }
             else {
-                return HistoryItem.UserActivity.WALKING;
+                return HistoryItem.UserActivity.SITTING;
             }
         }
     }
