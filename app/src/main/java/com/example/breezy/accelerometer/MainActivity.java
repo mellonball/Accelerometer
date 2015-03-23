@@ -144,7 +144,7 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
                     mHistoryFragment.addNewHistoryActivity(item);
                     mPollStartTime = pollEndTime;
                     fw.write(item.getDisplayTimeRange() + " " + activity.toString() + "\n");
-
+                    fw.flush();
 
                 } catch (Exception e) {
                     Log.d(TAG, "Polling activity Exception: " + e.toString());
