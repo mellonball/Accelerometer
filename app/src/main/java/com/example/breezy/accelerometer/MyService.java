@@ -84,7 +84,6 @@ public class MyService extends Service implements SensorEventListener {
         //Temporary variable for displaying data in MainActivity
         mSensorDataListeners = new ArrayList<>();
         mSampledUserActivity = new HashMap<>();
-        initializeSampledActivity();
         mThreadScheduler = Executors.newSingleThreadScheduledExecutor();
         mPollUserActivity = new Runnable() {
 
@@ -192,19 +191,19 @@ public class MyService extends Service implements SensorEventListener {
 
     //Used to connect to our sensors when we start collecting data
     public void startDataCollection() {
+        initializeData();
+        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
         mActivityPoller = mThreadScheduler.scheduleAtFixedRate(mPollUserActivity,
                 0,
                 POLLING_INTERVAL_SECONDS,
                 TimeUnit.SECONDS);
-        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-        mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
-    public void clearCurrentData() {
-        synchronized (mSensorDataLock) {
-            mMovementAcceleration = new AccelerationItem(0, 0, 0);
-            mGravityAcceleration = new AccelerationItem(0, 0, 0);
-        }
+    private void initializeData() {
+        initializeSampledActivity();
+        mMovementAcceleration = new AccelerationItem(0, 0, 0);
+        mGravityAcceleration = new AccelerationItem(0, 0, 0);
     }
 
     public HistoryItem.UserActivity getSampledUserActivity()  {

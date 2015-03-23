@@ -101,20 +101,15 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
             String line;
             while ((line = br.readLine()) != null) {
                 String[] tokens = line.split(" ");
-                String[] start_tokens = tokens[0].split(":");
-                String[] end_tokens = tokens[3].split(":");
-
-                int start_hr = Integer.parseInt(start_tokens[0]);
-                int start_min = Integer.parseInt(start_tokens[1]);
-                int end_hr = Integer.parseInt(end_tokens[0]);
-                int end_min = Integer.parseInt(end_tokens[1]);
-
+                String startTime = tokens[0];
+                String startTimeOfDay = tokens[1];
+                String dash = tokens[2];
+                String endTime = tokens[3];
+                String endTimeOfDay = tokens[4];
+                String dateRange = startTime + " " + startTimeOfDay + " " + dash + " " + endTime + " " + endTimeOfDay;
                 HistoryItem.UserActivity currentActivity = HistoryItem.UserActivity.valueOf(tokens[5].toUpperCase());
                 Drawable currentIcon = getUserActivityIcon(currentActivity);
-                Date start = new Date(0, 0, 0, start_hr, start_min);
-                Date end = new Date(0, 0, 0, end_hr, end_min);
-
-                HistoryItem item = new HistoryItem(currentIcon, currentActivity, start, end);
+                HistoryItem item = new HistoryItem(currentIcon, currentActivity, dateRange);
                 mHistoryFragment.addNewHistoryActivity(item);
             }
 
@@ -274,7 +269,6 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
                 if (mBound && mDetecting) {
                     stopActivityDetection();
                     mDetecting = false;
-                    mServiceobj.clearCurrentData();
                     Toast.makeText(MainActivity.this, "Detection stopped", Toast.LENGTH_SHORT).show();
 
                 } else {
